@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.sqlite3
+*.db
+# Virtual environment
+virtual/
+# IDE / Editor
+.vscode/
+# OS files
+.DS_Store
