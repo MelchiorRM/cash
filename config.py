@@ -18,7 +18,7 @@ MIN_WINDOW_WIDTH=1000
 MIN_WINDOW_HEIGHT=700
 THEME="dark"
 
-DEFAULT_CURRENCY="NTD
+DEFAULT_CURRENCY="NTD"
 CURRENCY_SYMBOL="NT$"
 DECIMAL_PLACES=2
 
@@ -45,7 +45,7 @@ COLORS = {
     "danger": "#ef4444",
     "warning": "#f59e0b",
     "info": "#3b82f6",
-    "text_primary": "#f1f5f9"
+    "text_primary": "#f1f5f9",
     "text_secondary": "#cbd5e1",
     "dark_bg": "#0f172a",
     "card_bg": "#1e293b",
