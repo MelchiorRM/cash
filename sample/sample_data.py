@@ -28,7 +28,7 @@ def create_sample_database():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            cursor.execute("""
+    cursor.execute("""
                 CREATE TABLE IF NOT EXISTS budgets(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     category TEXT UNIQUE NOT NULL,
@@ -36,17 +36,17 @@ def create_sample_database():
                     created_at TIMESTSMAP DEFAULT CURRENT_TIMESTAMP
                     )
             """)
-            cursor.execute("""
+    cursor.execute("""
                 CREATE TABLE IF NOT EXISTS categories(
-                    id INTEGER PRIMIRY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT UNIQUE NOT NULL,
                     type TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            cursor.execute("""
+    cursor.execute("""
                 CREATE TABLE IF NOT EXISTS savings_goals(
-                    id INTEGER PRIMIRY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT UNIQUE NOT NULL,
                     target_amount REAL NOT NULL,
                     current_amount REAL DEFAULT 0,
@@ -82,8 +82,8 @@ def create_sample_database():
             if random.random() > 0.6:
                 amount = random.choice(amounts)
                 cursor.execute(
-                    'INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                    (date, "Expense", category, amount, f"{category} transaction")
+                    'INSERT INTO transactions (date, type, category, amount) VALUES (?, ?, ?, ?)',
+                    (date, "Expense", category, amount)
                 )
         
         # Add income occasionally
@@ -91,9 +91,9 @@ def create_sample_database():
             category, amounts = random.choice(income_data)
             amount = random.choice(amounts)
             cursor.execute(
-                'INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                (date, "Income", category, amount, f"{category} received")
-            )
+                    'INSERT INTO transactions (date, type, category, amount) VALUES (?, ?, ?, ?)',
+                    (date, "Expense", category, amount)
+                )
     
     # Insert sample budgets
     print("Adding sample budgets...")

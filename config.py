@@ -23,7 +23,7 @@ CURRENCY_SYMBOL="NT$"
 DECIMAL_PLACES=2
 
 DATE_FORMAT="%Y-%m-%d"
-DISPLAY_FORMAT="%b %d, %Y"
+DISPLAY_DATE_FORMAT="%b %d, %Y"
 
 EXPENSE_CATEGORIES=["Food", "Transportation", "Bills", "Entertainment", "Healthcare", "Education", "Other"]
 INCOME_CATEGORIES=["Scholarship", "Other"]
@@ -53,3 +53,6 @@ COLORS = {
 }
 
 DEFAULT_CHART_RANGE=90
+
+BUDGET_WARNING_THRESHOLD = 0.7 
+BUDGET_DANGER_THRESHOLD = 0.9 

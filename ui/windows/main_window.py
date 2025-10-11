@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
         from ui.widgets.transaction_widget import TransactionWidget
         from ui.widgets.budget_widget import BudgetWidget
         from ui.widgets.savings_widget import SavingsWidget
-        from ui.widgets.charts_widget import ChartsWidget
+        from ui.charts.charts_w import ChartsWidget
         
         self.dashboard_widget = DashboardWidget(self.db, self.data_changed)
         self.transaction_widget = TransactionWidget(self.db, self.data_changed)

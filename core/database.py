@@ -35,7 +35,7 @@ class DatabaseManager:
             """)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS categories(
-                    id INTEGER PRIMIRY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT UNIQUE NOT NULL,
                     type TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -43,7 +43,7 @@ class DatabaseManager:
             """)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS savings_goals(
-                    id INTEGER PRIMIRY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT UNIQUE NOT NULL,
                     target_amount REAL NOT NULL,
                     current_amount REAL DEFAULT 0,
@@ -65,14 +65,14 @@ class DatabaseManager:
      
     #TRANSACTION
     
-    def add_transaction(self, date: str, type_: str, category: str, amount: float, description: str = "") -> int:
+    def add_transaction(self, date: str, type_: str, category: str, amount: float) -> int:
         """Add a new transaction"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO transactions (date, type, category, amount, description)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (date, type_, category, amount, description))
+            cursor.execute(
+                'INSERT INTO transactions (date, type, category, amount) VALUES (?, ?, ?, ?)',
+                (date, type_, category, amount)
+            )
             conn.commit()
             return cursor.lastrowid
     
@@ -101,16 +101,14 @@ class DatabaseManager:
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
     
-    def update_transaction(self, transaction_id: int, date: str, type_: str, 
-                          category: str, amount: float, description: str = ""):
+    def update_transaction(self, transaction_id: int, date: str, type_: str, category: str, amount: float):
         """Update an existing transaction"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE transactions 
-                SET date = ?, type = ?, category = ?, amount = ?, description = ?
-                WHERE id = ?
-            ''', (date, type_, category, amount, description, transaction_id))
+            cursor.execute(
+                'UPDATE transactions SET date=?, type=?, category=?, amount=? WHERE id=?',
+                (date, type_, category, amount, transaction_id)
+            )
             conn.commit()
     
     def delete_transaction(self, transaction_id: int):
