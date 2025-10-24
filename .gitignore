@@ -8,3 +8,5 @@ virtual/
 .vscode/
 # OS files
 .DS_Store
+# Configuration
+config.py
