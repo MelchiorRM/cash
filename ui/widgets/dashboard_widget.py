@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, 
                              QScrollArea, QProgressBar, QGridLayout)
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 
 from config import COLORS, DEFAULT_CHART_RANGE
 from core.database import DatabaseManager
@@ -20,6 +20,11 @@ class DashboardWidget(QWidget):
         self.data_changed = data_changed
         self.charts_manager = ChartsManager()
         
+        # Store references to value labels for easy updates
+        self.balance_value_label = None
+        self.income_value_label = None
+        self.expense_value_label = None
+        
         self.init_ui()
         self.data_changed.connect(self.refresh)
     
@@ -37,13 +42,19 @@ class DashboardWidget(QWidget):
         
         # Summary cards
         summary_layout = QHBoxLayout()
-        self.balance_card = self.create_summary_card("Current Balance", "NT$0.00", COLORS['primary'])
-        self.income_card = self.create_summary_card("Monthly Income", "NT$0.00", COLORS['success'])
-        self.expense_card = self.create_summary_card("Monthly Spending", "NT$0.00", COLORS['danger'])
+        balance_card, self.balance_value_label = self.create_summary_card(
+            "Current Balance", "NT$0.00", COLORS['primary']
+        )
+        income_card, self.income_value_label = self.create_summary_card(
+            "Monthly Income", "NT$0.00", COLORS['success']
+        )
+        expense_card, self.expense_value_label = self.create_summary_card(
+            "Monthly Spending", "NT$0.00", COLORS['danger']
+        )
         
-        summary_layout.addWidget(self.balance_card)
-        summary_layout.addWidget(self.income_card)
-        summary_layout.addWidget(self.expense_card)
+        summary_layout.addWidget(balance_card)
+        summary_layout.addWidget(income_card)
+        summary_layout.addWidget(expense_card)
         scroll_layout.addLayout(summary_layout)
         
         # Alerts/Notifications
@@ -53,9 +64,14 @@ class DashboardWidget(QWidget):
                 background-color: {COLORS['card_bg']};
                 border-radius: 8px;
                 border: 1px solid {COLORS['border']};
+                padding: 15px;
             }}
         """)
         self.alerts_layout = QVBoxLayout()
+        alerts_title = QLabel("Budget Alerts")
+        alerts_title.setFont(QFont("Arial", 12, QFont.Bold))
+        alerts_title.setStyleSheet(f"color: {COLORS['text_primary']};")
+        self.alerts_layout.addWidget(alerts_title)
         self.alerts_frame.setLayout(self.alerts_layout)
         scroll_layout.addWidget(self.alerts_frame)
         
@@ -69,6 +85,7 @@ class DashboardWidget(QWidget):
                 background-color: {COLORS['card_bg']};
                 border-radius: 8px;
                 border: 1px solid {COLORS['border']};
+                padding: 10px;
             }}
         """)
         pie_layout = QVBoxLayout()
@@ -77,6 +94,7 @@ class DashboardWidget(QWidget):
         title.setStyleSheet(f"color: {COLORS['text_primary']};")
         pie_layout.addWidget(title)
         self.pie_canvas = FigureCanvas(self.charts_manager.create_expense_pie_chart([]))
+        self.pie_canvas.setMinimumSize(400, 300)
         pie_layout.addWidget(self.pie_canvas)
         pie_frame.setLayout(pie_layout)
         charts_layout.addWidget(pie_frame)
@@ -88,6 +106,7 @@ class DashboardWidget(QWidget):
                 background-color: {COLORS['card_bg']};
                 border-radius: 8px;
                 border: 1px solid {COLORS['border']};
+                padding: 10px;
             }}
         """)
         line_layout = QVBoxLayout()
@@ -96,6 +115,7 @@ class DashboardWidget(QWidget):
         title.setStyleSheet(f"color: {COLORS['text_primary']};")
         line_layout.addWidget(title)
         self.line_canvas = FigureCanvas(self.charts_manager.create_spending_trend_chart([]))
+        self.line_canvas.setMinimumSize(400, 300)
         line_layout.addWidget(self.line_canvas)
         line_frame.setLayout(line_layout)
         charts_layout.addWidget(line_frame)
@@ -151,12 +171,29 @@ class DashboardWidget(QWidget):
         scroll_layout.addStretch()
         scroll_widget.setLayout(scroll_layout)
         scroll.setWidget(scroll_widget)
+        scroll.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {COLORS['dark_bg']};
+                border: none;
+            }}
+            QScrollBar:vertical {{
+                background-color: {COLORS['card_bg']};
+                width: 12px;
+                border: none;
+            }}
+            QScrollBar::handle:vertical {{
+                background-color: {COLORS['border']};
+                border-radius: 6px;
+            }}
+        """)
         layout.addWidget(scroll)
         
         self.setLayout(layout)
+        # Initial data load
+        self.refresh()
     
-    def create_summary_card(self, title: str, value: str, color: str) -> QFrame:
-        """Create a summary card widget"""
+    def create_summary_card(self, title: str, value: str, color: str):
+        """Create a summary card widget and return both card and value label"""
         card = QFrame()
         card.setStyleSheet(f"""
             QFrame {{
@@ -182,7 +219,7 @@ class DashboardWidget(QWidget):
         layout.addWidget(value_label)
         
         card.setLayout(layout)
-        return card
+        return card, value_label  # Return both card and value label
     
     def create_budget_item(self, category: str, spent: float, limit: float) -> QFrame:
         """Create a budget item widget"""
@@ -220,6 +257,7 @@ class DashboardWidget(QWidget):
         progress.setMaximum(100)
         progress.setValue(min(int(percentage), 100))
         progress.setFixedHeight(6)
+        progress.setTextVisible(False)
         
         # Color based on usage
         if percentage >= 100:
@@ -275,7 +313,8 @@ class DashboardWidget(QWidget):
         name_label.setFont(QFont("Arial", 10, QFont.Bold))
         name_label.setStyleSheet(f"color: {COLORS['text_primary']};")
         
-        deadline_label = QLabel(f"Due: {deadline}")
+        from core.utils import format_display_date
+        deadline_label = QLabel(f"Due: {format_display_date(deadline)}")
         deadline_label.setStyleSheet(f"color: {COLORS['text_secondary']};")
         deadline_label.setFont(QFont("Arial", 9))
         
@@ -290,6 +329,7 @@ class DashboardWidget(QWidget):
         percentage = min((current / target * 100) if target > 0 else 0, 100)
         progress.setValue(int(percentage))
         progress.setFixedHeight(6)
+        progress.setTextVisible(False)
         
         progress_color = COLORS['success'] if current >= target else COLORS['primary']
         progress.setStyleSheet(f"""
@@ -327,22 +367,13 @@ class DashboardWidget(QWidget):
         """Refresh dashboard data"""
         year, month = get_current_month_year()
         
-        # Update summary cards
+        # Update summary cards using stored label references
         summary = self.db.get_monthly_summary(year, month)
-        self.balance_card.findChild(QLabel, None).setText(format_currency(summary['balance']))
+        self.balance_value_label.setText(format_currency(summary['balance']))
+        self.income_value_label.setText(format_currency(summary['income']))
+        self.expense_value_label.setText(format_currency(summary['expense']))
         
-        # Get all child labels from cards
-        cards = [self.balance_card, self.income_card, self.expense_card]
-        card_values = [format_currency(summary['balance']), 
-                      format_currency(summary['income']),
-                      format_currency(summary['expense'])]
-        
-        for card, value in zip(cards, card_values):
-            labels = card.findChildren(QLabel)
-            if len(labels) >= 2:
-                labels[1].setText(value)
-        
-        # Update charts
+        # Update charts with better sizing
         start_date, end_date = get_date_range_for_period("last_90_days")
         
         expense_by_category = self.db.get_expenses_by_category(start_date, end_date)
@@ -366,7 +397,9 @@ class DashboardWidget(QWidget):
         """Update budget status display"""
         # Clear existing items
         while self.budget_items_layout.count():
-            self.budget_items_layout.takeAt(0).widget().deleteLater()
+            item = self.budget_items_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         
         budget_status = self.db.get_budget_status(year, month)
         
@@ -384,7 +417,9 @@ class DashboardWidget(QWidget):
         """Update savings goals display"""
         # Clear existing items
         while self.savings_items_layout.count():
-            self.savings_items_layout.takeAt(0).widget().deleteLater()
+            item = self.savings_items_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         
         goals = self.db.get_all_savings_goals()
         
@@ -403,9 +438,11 @@ class DashboardWidget(QWidget):
     
     def update_alerts(self, year: int, month: int):
         """Update budget alerts and notifications"""
-        # Clear existing alerts
-        while self.alerts_layout.count():
-            self.alerts_layout.takeAt(0).widget().deleteLater()
+        # Clear existing alerts (keep title)
+        while self.alerts_layout.count() > 1:
+            item = self.alerts_layout.takeAt(1)
+            if item.widget():
+                item.widget().deleteLater()
         
         budget_status = self.db.get_budget_status(year, month)
         alerts = calculate_budget_alerts(budget_status)
@@ -420,7 +457,7 @@ class DashboardWidget(QWidget):
             alert_label = QLabel(alert['message'])
             alert_label.setFont(QFont("Arial", 10))
             if alert['type'] == 'exceeded':
-                alert_label.setStyleSheet(f"color: {COLORS['danger']};")
+                alert_label.setStyleSheet(f"color: {COLORS['danger']}; font-weight: bold;")
             else:
-                alert_label.setStyleSheet(f"color: {COLORS['warning']};")
+                alert_label.setStyleSheet(f"color: {COLORS['warning']}; font-weight: bold;")
             self.alerts_layout.addWidget(alert_label)

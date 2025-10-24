@@ -92,7 +92,7 @@ def create_sample_database():
             amount = random.choice(amounts)
             cursor.execute(
                     'INSERT INTO transactions (date, type, category, amount) VALUES (?, ?, ?, ?)',
-                    (date, "Expense", category, amount)
+                    (date, "Income", category, amount)
                 )
     
     # Insert sample budgets

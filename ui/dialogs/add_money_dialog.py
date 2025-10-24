@@ -1,88 +1,62 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-                             QDateEdit, QPushButton, QMessageBox)
-from PyQt5.QtCore import Qt, QDate, pyqtSignal
+                             QPushButton, QMessageBox)
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 
-from config import COLORS, DATE_FORMAT
+from config import COLORS
 from core.database import DatabaseManager
-from core.utils import validate_amount, get_today
-from datetime import datetime
+from core.utils import validate_amount, format_currency
 
 
-class SavingsDialog(QDialog):
-    """Dialog for adding/editing savings goals"""
+class AddMoneyDialog(QDialog):
+    """Dialog for adding money to a savings goal"""
     
-    def __init__(self, db: DatabaseManager, data_changed: pyqtSignal, goal=None):
+    def __init__(self, db: DatabaseManager, data_changed: pyqtSignal, goal: dict):
         super().__init__()
         self.db = db
         self.data_changed = data_changed
         self.goal = goal
-        self.is_edit = goal is not None
         
         self.init_ui()
         self.apply_styles()
-        
-        if self.is_edit:
-            self.populate_fields()
     
     def init_ui(self):
         """Initialize dialog UI"""
-        self.setWindowTitle("Edit Goal" if self.is_edit else "Create Savings Goal")
-        self.setGeometry(100, 100, 450, 350)
+        self.setWindowTitle("Add Money to Goal")
+        self.setGeometry(100, 100, 450, 300)
         
         layout = QVBoxLayout()
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
         
         # Title
-        title = QLabel("Savings Goal" if not self.is_edit else "Edit Goal")
+        title = QLabel("Add Money to Savings Goal")
         title.setFont(QFont("Arial", 14, QFont.Bold))
         title.setStyleSheet(f"color: {COLORS['text_primary']};")
         layout.addWidget(title)
         
-        # Goal name
-        name_layout = QHBoxLayout()
-        name_layout.addWidget(QLabel("Goal Name:"))
-        self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("e.g., Summer Vacation")
-        name_layout.addWidget(self.name_input, 1)
-        layout.addLayout(name_layout)
+        # Goal information
+        info_frame = self.create_info_frame()
+        layout.addWidget(info_frame)
         
-        # Target amount
-        target_layout = QHBoxLayout()
-        target_layout.addWidget(QLabel("Target Amount (NT$):"))
-        self.target_input = QLineEdit()
-        self.target_input.setPlaceholderText("0.00")
-        target_layout.addWidget(self.target_input, 1)
-        layout.addLayout(target_layout)
+        # Amount input
+        amount_layout = QHBoxLayout()
+        amount_layout.addWidget(QLabel("Amount to Add (NT$):"))
+        self.amount_input = QLineEdit()
+        self.amount_input.setPlaceholderText("0.00")
+        self.amount_input.textChanged.connect(self.update_preview)
+        amount_layout.addWidget(self.amount_input, 1)
+        layout.addLayout(amount_layout)
         
-        # Current amount (read-only for new goals)
-        current_layout = QHBoxLayout()
-        current_layout.addWidget(QLabel("Current Amount (NT$):"))
-        self.current_input = QLineEdit()
-        self.current_input.setPlaceholderText("0.00")
-        if not self.is_edit:
-            self.current_input.setText("0.00")
-            self.current_input.setReadOnly(True)
-        current_layout.addWidget(self.current_input, 1)
-        layout.addLayout(current_layout)
+        # Preview of new amount
+        self.preview_label = QLabel("")
+        self.preview_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-style: italic;")
+        layout.addWidget(self.preview_label)
         
-        # Deadline
-        deadline_layout = QHBoxLayout()
-        deadline_layout.addWidget(QLabel("Deadline:"))
-        self.deadline_edit = QDateEdit()
-        self.deadline_edit.setDate(QDate.currentDate().addMonths(3))
-        self.deadline_edit.setCalendarPopup(True)
-        deadline_layout.addWidget(self.deadline_edit, 1)
-        layout.addLayout(deadline_layout)
-        
-        # Info text
-        info_label = QLabel(
-            "💡 Set a realistic target amount and deadline.\n"
-            "You can add money to your goal anytime."
-        )
-        info_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 10px;")
-        layout.addWidget(info_label)
+        # Progress bar preview
+        self.progress_label = QLabel("")
+        self.progress_label.setStyleSheet(f"color: {COLORS['primary']}; font-weight: bold;")
+        layout.addWidget(self.progress_label)
         
         layout.addSpacing(10)
         
@@ -90,9 +64,9 @@ class SavingsDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
-        save_btn = QPushButton("💾 Save")
+        save_btn = QPushButton("💰 Add Money")
         save_btn.setStyleSheet(self.get_button_style())
-        save_btn.clicked.connect(self.save_goal)
+        save_btn.clicked.connect(self.add_money)
         button_layout.addWidget(save_btn)
         
         cancel_btn = QPushButton("Cancel")
@@ -104,56 +78,117 @@ class SavingsDialog(QDialog):
         layout.addStretch()
         
         self.setLayout(layout)
+        self.amount_input.setFocus()
     
-    def populate_fields(self):
-        """Populate fields with goal data for editing"""
-        self.name_input.setText(self.goal['name'])
-        self.target_input.setText(str(self.goal['target_amount']))
-        self.current_input.setText(str(self.goal['current_amount']))
-        self.deadline_edit.setDate(QDate.fromString(self.goal['deadline'], DATE_FORMAT))
+    def create_info_frame(self):
+        """Create information frame showing goal details"""
+        frame = QLabel()
+        frame.setStyleSheet(f"""
+            QLabel {{
+                background-color: {COLORS['card_bg']};
+                border-radius: 8px;
+                border: 1px solid {COLORS['border']};
+                padding: 15px;
+            }}
+        """)
+        
+        current = self.goal['current_amount']
+        target = self.goal['target_amount']
+        remaining = target - current
+        percentage = (current / target * 100) if target > 0 else 0
+        
+        info_text = f"""
+<b>Goal:</b> {self.goal['name']}<br>
+<b>Target:</b> {format_currency(target)}<br>
+<b>Current:</b> {format_currency(current)}<br>
+<b>Remaining:</b> {format_currency(remaining)}<br>
+<b>Progress:</b> {percentage:.1f}%
+        """
+        
+        frame.setText(info_text)
+        frame.setWordWrap(True)
+        frame.setStyleSheet(f"""
+            QLabel {{
+                background-color: {COLORS['card_bg']};
+                border-radius: 8px;
+                border: 1px solid {COLORS['border']};
+                padding: 15px;
+                color: {COLORS['text_primary']};
+                font-size: 11px;
+            }}
+        """)
+        
+        return frame
     
-    def save_goal(self):
-        """Save goal to database"""
-        # Validate inputs
-        if not self.name_input.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Please enter a goal name")
+    def update_preview(self):
+        """Update preview of new amount and progress"""
+        text = self.amount_input.text().strip()
+        if not text:
+            self.preview_label.setText("")
+            self.progress_label.setText("")
             return
         
-        if not self.target_input.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Please enter a target amount")
-            return
-        
-        valid, target_amount = validate_amount(self.target_input.text())
+        valid, amount = validate_amount(text)
         if not valid:
-            QMessageBox.warning(self, "Validation Error", "Please enter a valid target amount")
+            self.preview_label.setText("⚠️ Invalid amount")
+            self.preview_label.setStyleSheet(f"color: {COLORS['danger']}; font-style: italic;")
+            self.progress_label.setText("")
             return
         
-        if self.is_edit:
-            if not self.current_input.text().strip():
-                QMessageBox.warning(self, "Validation Error", "Please enter current amount")
-                return
-            
-            valid, current_amount = validate_amount(self.current_input.text())
-            if not valid:
-                QMessageBox.warning(self, "Validation Error", "Please enter a valid current amount")
-                return
+        current = self.goal['current_amount']
+        target = self.goal['target_amount']
+        new_amount = current + amount
+        new_percentage = (new_amount / target * 100) if target > 0 else 0
+        
+        # Preview text
+        preview_text = f"New total: {format_currency(new_amount)}"
+        self.preview_label.setText(preview_text)
+        self.preview_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-style: italic;")
+        
+        # Progress text
+        if new_amount >= target:
+            progress_text = f"✅ Goal will be completed! ({new_percentage:.1f}%)"
+            color = COLORS['success']
         else:
-            current_amount = 0.0
+            remaining = target - new_amount
+            progress_text = f"Progress: {new_percentage:.1f}% (Need {format_currency(remaining)} more)"
+            color = COLORS['primary']
+        
+        self.progress_label.setText(progress_text)
+        self.progress_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+    
+    def add_money(self):
+        """Add money to savings goal"""
+        # Validate input
+        if not self.amount_input.text().strip():
+            QMessageBox.warning(self, "Validation Error", "Please enter an amount")
+            return
+        
+        valid, amount = validate_amount(self.amount_input.text())
+        if not valid:
+            QMessageBox.warning(self, "Validation Error", "Please enter a valid amount")
+            return
+        
+        if amount <= 0:
+            QMessageBox.warning(self, "Validation Error", "Amount must be greater than zero")
+            return
         
         try:
-            name = self.name_input.text()
-            deadline = self.deadline_edit.date().toString(DATE_FORMAT)
+            new_amount = self.goal['current_amount'] + amount
+            self.db.update_savings_goal_amount(self.goal['id'], new_amount)
             
-            if self.is_edit:
-                self.db.update_savings_goal_amount(self.goal['id'], current_amount)
-                # Note: In a full implementation, you'd also update name and deadline
-            else:
-                self.db.add_savings_goal(name, target_amount, deadline)
+            # Check if goal is completed
+            if new_amount >= self.goal['target_amount']:
+                QMessageBox.information(
+                    self, 
+                    "Goal Completed! 🎉", 
+                    f"Congratulations! You've reached your savings goal for '{self.goal['name']}'!"
+                )
             
             self.data_changed.emit()
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save goal: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to add money: {str(e)}")
     
     def apply_styles(self):
         """Apply stylesheet"""
@@ -165,19 +200,16 @@ class SavingsDialog(QDialog):
                 color: {COLORS['text_primary']};
                 font-weight: bold;
             }}
-            QLineEdit, QDateEdit {{
+            QLineEdit {{
                 background-color: {COLORS['card_bg']};
                 color: {COLORS['text_primary']};
                 border: 1px solid {COLORS['border']};
                 border-radius: 4px;
                 padding: 8px;
+                font-size: 12px;
             }}
-            QLineEdit:focus, QDateEdit:focus {{
+            QLineEdit:focus {{
                 border: 2px solid {COLORS['primary']};
-            }}
-            QCalendarWidget {{
-                background-color: {COLORS['card_bg']};
-                color: {COLORS['text_primary']};
             }}
         """
         self.setStyleSheet(stylesheet)

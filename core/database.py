@@ -1,4 +1,4 @@
-import  sqlite3
+import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import List, Tuple, Optional
@@ -22,6 +22,7 @@ class DatabaseManager:
                     type TEXT NOT NULL,
                     category TEXT NOT NULL,
                     amount REAL NOT NULL,
+                    description TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -30,7 +31,7 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     category TEXT UNIQUE NOT NULL,
                     limit_amount REAL NOT NULL,
-                    created_at TIMESTSMAP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
             """)
             cursor.execute("""
@@ -52,6 +53,7 @@ class DatabaseManager:
                 )
             """)
             conn.commit()
+    
     @contextmanager
     def get_connection(self):
         """Setting database connections"""
@@ -62,16 +64,15 @@ class DatabaseManager:
         finally:
             conn.close()
     
-     
-    #TRANSACTION
+    # TRANSACTION OPERATIONS
     
-    def add_transaction(self, date: str, type_: str, category: str, amount: float) -> int:
+    def add_transaction(self, date: str, type_: str, category: str, amount: float, description: str = "") -> int:
         """Add a new transaction"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                'INSERT INTO transactions (date, type, category, amount) VALUES (?, ?, ?, ?)',
-                (date, type_, category, amount)
+                'INSERT INTO transactions (date, type, category, amount, description) VALUES (?, ?, ?, ?, ?)',
+                (date, type_, category, amount, description)
             )
             conn.commit()
             return cursor.lastrowid
@@ -101,13 +102,13 @@ class DatabaseManager:
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
     
-    def update_transaction(self, transaction_id: int, date: str, type_: str, category: str, amount: float):
+    def update_transaction(self, transaction_id: int, date: str, type_: str, category: str, amount: float, description: str = ""):
         """Update an existing transaction"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                'UPDATE transactions SET date=?, type=?, category=?, amount=? WHERE id=?',
-                (date, type_, category, amount, transaction_id)
+                'UPDATE transactions SET date=?, type=?, category=?, amount=?, description=? WHERE id=?',
+                (date, type_, category, amount, description, transaction_id)
             )
             conn.commit()
     
@@ -193,7 +194,7 @@ class DatabaseManager:
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
     
-    #BUDGET
+    # BUDGET OPERATIONS
     def add_budget(self, category: str, limit_amount: float):
         """Add a new budget"""
         with self.get_connection() as conn:
@@ -242,7 +243,7 @@ class DatabaseManager:
             
             return [dict(row) for row in cursor.fetchall()]
     
-    #SAVINGS OPERATIONS
+    # SAVINGS OPERATIONS
     def add_savings_goal(self, name: str, target_amount: float, deadline: str) -> int:
         """Add a new savings goal"""
         with self.get_connection() as conn:
@@ -279,7 +280,7 @@ class DatabaseManager:
             cursor.execute('DELETE FROM savings_goals WHERE id = ?', (goal_id,))
             conn.commit()
     
-    #CATEGORY OPERATIONS    
+    # CATEGORY OPERATIONS    
     def add_custom_category(self, name: str, type_: str):
         """Add a custom category (Income or Expense)"""
         with self.get_connection() as conn:
