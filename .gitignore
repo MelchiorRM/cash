@@ -10,3 +10,8 @@ virtual/
 .DS_Store
 # Configuration
 config.py
+# Executables
+building/
+main.spec
+app_icon.ico
+build/
