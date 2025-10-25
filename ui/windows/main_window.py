@@ -35,10 +35,10 @@ class MainWindow(QMainWindow):
         # Connect signals
         self.data_changed.connect(self.refresh_all)
         
-        # Auto-refresh timer (every 5 seconds)
+        # Auto-refresh timer (every 30 seconds - reduced from 5)
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self.refresh_all)
-        self.refresh_timer.start(5000)
+        self.refresh_timer.start(30000)  # 30 seconds
     
     def init_ui(self):
         """Initialize user interface"""
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         header = self.create_header()
         main_layout.addWidget(header)
         
-        # Main content with tabs
+        # Main content with tabs - NO CHARTS TAB
         tabs = QTabWidget()
         tabs.setStyleSheet(self.get_tab_stylesheet())
         
@@ -61,19 +61,17 @@ class MainWindow(QMainWindow):
         from ui.widgets.transaction_widget import TransactionWidget
         from ui.widgets.budget_widget import BudgetWidget
         from ui.widgets.savings_widget import SavingsWidget
-        from ui.charts.charts_w import ChartsWidget
         
         self.dashboard_widget = DashboardWidget(self.db, self.data_changed)
         self.transaction_widget = TransactionWidget(self.db, self.data_changed)
         self.budget_widget = BudgetWidget(self.db, self.data_changed)
         self.savings_widget = SavingsWidget(self.db, self.data_changed)
-        self.charts_widget = ChartsWidget(self.db)
         
         tabs.addTab(self.dashboard_widget, "📊 Dashboard")
         tabs.addTab(self.transaction_widget, "💸 Transactions")
         tabs.addTab(self.budget_widget, "💰 Budgets")
         tabs.addTab(self.savings_widget, "🎯 Savings")
-        tabs.addTab(self.charts_widget, "📈 Charts")
+        # REMOVED: Charts tab
         
         main_layout.addWidget(tabs)
         central_widget.setLayout(main_layout)
@@ -176,16 +174,18 @@ class MainWindow(QMainWindow):
             QTabBar::tab {{
                 background-color: {COLORS['card_bg']};
                 color: {COLORS['text_secondary']};
-                padding: 10px 20px;
+                padding: 12px 24px;
                 border: none;
-                border-bottom: 2px solid transparent;
+                border-bottom: 3px solid transparent;
+                font-size: 12px;
+                font-weight: bold;
             }}
             QTabBar::tab:selected {{
                 color: {COLORS['primary']};
-                border-bottom: 2px solid {COLORS['primary']};
+                border-bottom: 3px solid {COLORS['primary']};
             }}
             QTabBar::tab:hover {{
-                background-color: {COLORS['card_bg']};
+                background-color: {COLORS['dark_bg']};
                 color: {COLORS['text_primary']};
             }}
         """
@@ -262,6 +262,7 @@ class MainWindow(QMainWindow):
 
 def main():
     """Application entry point"""
+    from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
@@ -269,5 +270,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
     main()

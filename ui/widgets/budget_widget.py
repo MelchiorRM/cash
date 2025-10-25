@@ -161,11 +161,12 @@ class BudgetWidget(QWidget):
         header_layout.addWidget(percentage_label)
         layout.addLayout(header_layout)
         
-        # Progress bar
+        # Progress bar - NO TEXT INSIDE
         progress = QProgressBar()
         progress.setMaximum(100)
         progress.setValue(min(int(percentage), 100))
-        progress.setFixedHeight(8)
+        progress.setFixedHeight(10)
+        progress.setTextVisible(False)  # HIDE TEXT INSIDE BAR
         
         if percentage >= 100:
             color = COLORS['danger']
@@ -178,11 +179,11 @@ class BudgetWidget(QWidget):
             QProgressBar {{
                 background-color: {COLORS['dark_bg']};
                 border: none;
-                border-radius: 4px;
+                border-radius: 5px;
             }}
             QProgressBar::chunk {{
                 background-color: {color};
-                border-radius: 4px;
+                border-radius: 5px;
             }}
         """)
         layout.addWidget(progress)

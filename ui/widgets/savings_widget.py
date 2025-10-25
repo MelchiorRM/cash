@@ -149,30 +149,31 @@ class SavingsWidget(QWidget):
             status_label = QLabel("✓ Completed")
             status_label.setStyleSheet(f"color: {COLORS['success']}; font-weight: bold;")
         else:
-            status_label = QLabel(f"{percentage:.0f}% Complete")
-            status_label.setStyleSheet(f"color: {COLORS['primary']}; font-weight: bold;")
+            status_label = QLabel(f"{percentage:.0f}%")
+            status_label.setStyleSheet(f"color: {COLORS['primary']}; font-weight: bold; font-size: 12px;")
         
         header_layout.addWidget(name_label)
         header_layout.addStretch()
         header_layout.addWidget(status_label)
         layout.addLayout(header_layout)
         
-        # Progress bar
+        # Progress bar - NO TEXT INSIDE
         progress = QProgressBar()
         progress.setMaximum(100)
         progress.setValue(int(percentage))
-        progress.setFixedHeight(8)
+        progress.setFixedHeight(10)
+        progress.setTextVisible(False)  # HIDE TEXT INSIDE BAR
         
         color = COLORS['success'] if current >= target else COLORS['primary']
         progress.setStyleSheet(f"""
             QProgressBar {{
                 background-color: {COLORS['dark_bg']};
                 border: none;
-                border-radius: 4px;
+                border-radius: 5px;
             }}
             QProgressBar::chunk {{
                 background-color: {color};
-                border-radius: 4px;
+                border-radius: 5px;
             }}
         """)
         layout.addWidget(progress)

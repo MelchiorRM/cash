@@ -75,52 +75,34 @@ class DashboardWidget(QWidget):
         self.alerts_frame.setLayout(self.alerts_layout)
         scroll_layout.addWidget(self.alerts_frame)
         
-        # Charts (pie and line)
-        charts_layout = QHBoxLayout()
+        # Pie chart ONLY - centered and larger
+        chart_container = QHBoxLayout()
+        chart_container.addStretch()
         
-        # Pie chart
         pie_frame = QFrame()
         pie_frame.setStyleSheet(f"""
             QFrame {{
                 background-color: {COLORS['card_bg']};
                 border-radius: 8px;
                 border: 1px solid {COLORS['border']};
-                padding: 10px;
+                padding: 20px;
             }}
         """)
         pie_layout = QVBoxLayout()
         title = QLabel("Expenses by Category")
-        title.setFont(QFont("Arial", 12, QFont.Bold))
+        title.setFont(QFont("Arial", 14, QFont.Bold))
         title.setStyleSheet(f"color: {COLORS['text_primary']};")
+        title.setAlignment(Qt.AlignCenter)
         pie_layout.addWidget(title)
+        
         self.pie_canvas = FigureCanvas(self.charts_manager.create_expense_pie_chart([]))
-        self.pie_canvas.setMinimumSize(400, 300)
+        self.pie_canvas.setMinimumSize(500, 400)
         pie_layout.addWidget(self.pie_canvas)
         pie_frame.setLayout(pie_layout)
-        charts_layout.addWidget(pie_frame)
         
-        # Line chart
-        line_frame = QFrame()
-        line_frame.setStyleSheet(f"""
-            QFrame {{
-                background-color: {COLORS['card_bg']};
-                border-radius: 8px;
-                border: 1px solid {COLORS['border']};
-                padding: 10px;
-            }}
-        """)
-        line_layout = QVBoxLayout()
-        title = QLabel("Spending Trends")
-        title.setFont(QFont("Arial", 12, QFont.Bold))
-        title.setStyleSheet(f"color: {COLORS['text_primary']};")
-        line_layout.addWidget(title)
-        self.line_canvas = FigureCanvas(self.charts_manager.create_spending_trend_chart([]))
-        self.line_canvas.setMinimumSize(400, 300)
-        line_layout.addWidget(self.line_canvas)
-        line_frame.setLayout(line_layout)
-        charts_layout.addWidget(line_frame)
-        
-        scroll_layout.addLayout(charts_layout)
+        chart_container.addWidget(pie_frame)
+        chart_container.addStretch()
+        scroll_layout.addLayout(chart_container)
         
         # Budget summary
         budget_frame = QFrame()
@@ -200,13 +182,13 @@ class DashboardWidget(QWidget):
                 background-color: {COLORS['card_bg']};
                 border-radius: 8px;
                 border-left: 4px solid {color};
-                padding: 15px;
+                padding: 20px;
             }}
         """)
-        card.setFixedHeight(100)
+        card.setMinimumHeight(120)
         
         layout = QVBoxLayout()
-        layout.setSpacing(10)
+        layout.setSpacing(12)
         
         title_label = QLabel(title)
         title_label.setFont(QFont("Arial", 11))
@@ -214,12 +196,14 @@ class DashboardWidget(QWidget):
         layout.addWidget(title_label)
         
         value_label = QLabel(value)
-        value_label.setFont(QFont("Arial", 18, QFont.Bold))
+        value_label.setFont(QFont("Arial", 20, QFont.Bold))
         value_label.setStyleSheet(f"color: {COLORS['text_primary']};")
+        value_label.setWordWrap(True)  # Allow text wrapping if needed
         layout.addWidget(value_label)
         
+        layout.addStretch()
         card.setLayout(layout)
-        return card, value_label  # Return both card and value label
+        return card, value_label
     
     def create_budget_item(self, category: str, spent: float, limit: float) -> QFrame:
         """Create a budget item widget"""
@@ -245,19 +229,19 @@ class DashboardWidget(QWidget):
         percentage = (spent / limit * 100) if limit > 0 else 0
         percentage_label = QLabel(f"{percentage:.0f}%")
         percentage_label.setStyleSheet(f"color: {COLORS['text_secondary']};")
-        percentage_label.setFont(QFont("Arial", 9))
+        percentage_label.setFont(QFont("Arial", 10, QFont.Bold))
         
         header_layout.addWidget(category_label)
         header_layout.addStretch()
         header_layout.addWidget(percentage_label)
         layout.addLayout(header_layout)
         
-        # Progress bar
+        # Progress bar - NO TEXT INSIDE
         progress = QProgressBar()
         progress.setMaximum(100)
         progress.setValue(min(int(percentage), 100))
-        progress.setFixedHeight(6)
-        progress.setTextVisible(False)
+        progress.setFixedHeight(8)
+        progress.setTextVisible(False)  # Hide percentage inside bar
         
         # Color based on usage
         if percentage >= 100:
@@ -271,11 +255,11 @@ class DashboardWidget(QWidget):
             QProgressBar {{
                 background-color: {COLORS['card_bg']};
                 border: none;
-                border-radius: 3px;
+                border-radius: 4px;
             }}
             QProgressBar::chunk {{
                 background-color: {color};
-                border-radius: 3px;
+                border-radius: 4px;
             }}
         """)
         layout.addWidget(progress)
@@ -323,27 +307,37 @@ class DashboardWidget(QWidget):
         header_layout.addWidget(deadline_label)
         layout.addLayout(header_layout)
         
-        # Progress bar
+        # Progress percentage on the right
+        percentage = min((current / target * 100) if target > 0 else 0, 100)
+        percentage_label = QLabel(f"{percentage:.0f}%")
+        percentage_label.setStyleSheet(f"color: {COLORS['text_secondary']};")
+        percentage_label.setFont(QFont("Arial", 10, QFont.Bold))
+        percentage_label.setAlignment(Qt.AlignRight)
+        
+        # Progress bar - NO TEXT INSIDE
+        progress_layout = QHBoxLayout()
         progress = QProgressBar()
         progress.setMaximum(100)
-        percentage = min((current / target * 100) if target > 0 else 0, 100)
         progress.setValue(int(percentage))
-        progress.setFixedHeight(6)
-        progress.setTextVisible(False)
+        progress.setFixedHeight(8)
+        progress.setTextVisible(False)  # Hide percentage inside bar
         
         progress_color = COLORS['success'] if current >= target else COLORS['primary']
         progress.setStyleSheet(f"""
             QProgressBar {{
                 background-color: {COLORS['card_bg']};
                 border: none;
-                border-radius: 3px;
+                border-radius: 4px;
             }}
             QProgressBar::chunk {{
                 background-color: {progress_color};
-                border-radius: 3px;
+                border-radius: 4px;
             }}
         """)
-        layout.addWidget(progress)
+        
+        progress_layout.addWidget(progress, 4)
+        progress_layout.addWidget(percentage_label, 1)
+        layout.addLayout(progress_layout)
         
         # Amount details
         amount_layout = QHBoxLayout()
@@ -351,13 +345,8 @@ class DashboardWidget(QWidget):
         amount_label.setStyleSheet(f"color: {COLORS['text_secondary']};")
         amount_label.setFont(QFont("Arial", 9))
         
-        percentage_label = QLabel(f"{percentage:.0f}%")
-        percentage_label.setStyleSheet(f"color: {COLORS['text_secondary']};")
-        percentage_label.setFont(QFont("Arial", 9, QFont.Bold))
-        
         amount_layout.addWidget(amount_label)
         amount_layout.addStretch()
-        amount_layout.addWidget(percentage_label)
         layout.addLayout(amount_layout)
         
         item.setLayout(layout)
@@ -373,16 +362,11 @@ class DashboardWidget(QWidget):
         self.income_value_label.setText(format_currency(summary['income']))
         self.expense_value_label.setText(format_currency(summary['expense']))
         
-        # Update charts with better sizing
+        # Update pie chart ONLY
         start_date, end_date = get_date_range_for_period("last_90_days")
-        
         expense_by_category = self.db.get_expenses_by_category(start_date, end_date)
         self.pie_canvas.figure = self.charts_manager.create_expense_pie_chart(expense_by_category)
         self.pie_canvas.draw()
-        
-        daily_spending = self.db.get_daily_spending(start_date, end_date)
-        self.line_canvas.figure = self.charts_manager.create_spending_trend_chart(daily_spending)
-        self.line_canvas.draw()
         
         # Update budget summary
         self.update_budget_summary(year, month)
