@@ -5,7 +5,7 @@ from PyQt5.QtGui import QFont
 
 from config import COLORS, DATE_FORMAT, EXPENSE_CATEGORIES, INCOME_CATEGORIES
 from core.database import DatabaseManager
-from core.utils import get_today, validate_amount, validate_date
+from core.utils import get_today, validate_amount
 from datetime import datetime
 
 
@@ -28,11 +28,17 @@ class TransactionDialog(QDialog):
     def init_ui(self):
         """Initialize dialog UI"""
         self.setWindowTitle("Edit Transaction" if self.is_edit else "Add Transaction")
-        self.setGeometry(100, 100, 500, 400)
+        self.setGeometry(100, 100, 500, 450)
         
         layout = QVBoxLayout()
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Title
+        title = QLabel("Edit Transaction" if self.is_edit else "Add Transaction")
+        title.setFont(QFont("Arial", 14, QFont.Bold))
+        title.setStyleSheet(f"color: {COLORS['text_primary']};")
+        layout.addWidget(title)
         
         # Type selection
         type_layout = QHBoxLayout()
@@ -49,6 +55,7 @@ class TransactionDialog(QDialog):
         self.date_edit = QDateEdit()
         self.date_edit.setDate(QDate.currentDate())
         self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDisplayFormat("yyyy-MM-dd")
         date_layout.addWidget(self.date_edit, 1)
         layout.addLayout(date_layout)
         
@@ -69,13 +76,14 @@ class TransactionDialog(QDialog):
         layout.addLayout(amount_layout)
         
         # Description
-        desc_layout = QHBoxLayout()
-        desc_layout.addWidget(QLabel("Description:"))
+        desc_label = QLabel("Description (optional):")
+        layout.addWidget(desc_label)
         self.description_input = QTextEdit()
-        self.description_input.setPlaceholderText("Optional notes...")
-        self.description_input.setFixedHeight(80)
-        desc_layout.addWidget(self.description_input, 1)
-        layout.addLayout(desc_layout)
+        self.description_input.setPlaceholderText("Add notes about this transaction...")
+        self.description_input.setFixedHeight(100)
+        layout.addWidget(self.description_input)
+        
+        layout.addSpacing(10)
         
         # Buttons
         button_layout = QHBoxLayout()
@@ -92,9 +100,9 @@ class TransactionDialog(QDialog):
         button_layout.addWidget(cancel_btn)
         
         layout.addLayout(button_layout)
-        layout.addStretch()
         
         self.setLayout(layout)
+        self.amount_input.setFocus()
     
     def on_type_changed(self):
         """Update categories when type changes"""
@@ -114,7 +122,11 @@ class TransactionDialog(QDialog):
         self.date_edit.setDate(QDate.fromString(self.transaction['date'], DATE_FORMAT))
         self.category_combo.setCurrentText(self.transaction['category'])
         self.amount_input.setText(str(self.transaction['amount']))
-        self.description_input.setText(self.transaction['description'] or "")
+        
+        # Handle description - might be None
+        description = self.transaction.get('description', '')
+        if description:
+            self.description_input.setText(description)
     
     def save_transaction(self):
         """Save transaction to database"""
@@ -125,13 +137,13 @@ class TransactionDialog(QDialog):
         
         valid, amount = validate_amount(self.amount_input.text())
         if not valid:
-            QMessageBox.warning(self, "Validation Error", "Please enter a valid amount")
+            QMessageBox.warning(self, "Validation Error", "Please enter a valid amount (numbers only)")
             return
         
         date_str = self.date_edit.date().toString(DATE_FORMAT)
         type_name = self.type_combo.currentText()
         category = self.category_combo.currentText()
-        description = self.description_input.toPlainText()
+        description = self.description_input.toPlainText().strip()
         
         try:
             if self.is_edit:
@@ -139,13 +151,16 @@ class TransactionDialog(QDialog):
                     self.transaction['id'], date_str, type_name, 
                     category, amount, description
                 )
+                QMessageBox.information(self, "Success", "Transaction updated successfully!")
             else:
                 self.db.add_transaction(date_str, type_name, category, amount, description)
+                QMessageBox.information(self, "Success", "Transaction added successfully!")
             
             self.data_changed.emit()
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save transaction: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to save transaction:\n{str(e)}")
+            print(f"Database error: {e}")  # Debug info
     
     def apply_styles(self):
         """Apply stylesheet"""
@@ -181,6 +196,15 @@ class TransactionDialog(QDialog):
                 color: {COLORS['text_primary']};
             }}
             QCalendarWidget QToolButton {{
+                color: {COLORS['text_primary']};
+                background-color: {COLORS['card_bg']};
+            }}
+            QCalendarWidget QMenu {{
+                background-color: {COLORS['card_bg']};
+                color: {COLORS['text_primary']};
+            }}
+            QCalendarWidget QSpinBox {{
+                background-color: {COLORS['card_bg']};
                 color: {COLORS['text_primary']};
             }}
         """
